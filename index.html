@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Melofy</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="./assets/ui/logo.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./assets/ui/logo.png">
+    <link rel="shortcut icon" href="./assets/ui/logo.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+        
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #0f172a;
+            background-image: url("./assets/ui/bg.webp");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+
+        /* Range Slider */
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 14px; width: 14px;
+            border-radius: 50%; background: #fff;
+            cursor: pointer; margin-top: -5px; 
+            box-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px;
+            cursor: pointer; background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+        }
+
+        /* Utilities */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        
+        /* Icon Filters */
+        .icon-white { filter: brightness(0) invert(1) drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+        /* Orange Glow for Active State */
+        .icon-active { filter: drop-shadow(0 0 5px #f97316); } 
+
+        /* Glass Text Effect */
+        .glass-text {
+            background: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.6) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 10px rgba(255,255,255,0.1);
+        }
+
+        /* Glass Badge with Depth */
+        .glass-badge {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen flex flex-col items-center justify-center p-4 md:p-8 pt-20 md:pt-4">
+
+    <!-- Mobile Floating Header -->
+    <div class="fixed top-0 left-0 w-full z-50 bg-black/20 backdrop-blur-xl border-b border-white/10 px-6 py-4 flex items-center justify-between md:hidden">
+        <div class="flex items-center gap-2">
+            <img src="assets/ui/logo.png" alt="Logo" class="w-8 h-8 object-contain">
+            <span class="text-xl font-bold tracking-wide glass-text">Melofy</span>
+        </div>
+        <button id="mobile-playlist-btn">
+            <img src="assets/ui/playlist.png" alt="Playlist" class="w-7 h-7 object-contain icon-white">
+        </button>
+    </div>
+
+    <!-- Main Player Container -->
+    <div class="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col md:flex-row h-auto md:h-[600px] relative">
+        
+        <!-- Left Side: Player Controls -->
+        <div class="w-full md:w-1/2 p-6 md:p-10 flex flex-col items-center justify-center relative z-10">
+            
+            <!-- Cover Art (Rounded Box, No Animation, No Visualizer) -->
+            <div class="relative w-64 h-64 md:w-72 md:h-72 mb-8 group">
+                <!-- Static Glow Behind -->
+                <div class="absolute inset-0 bg-orange-500 rounded-2xl blur-3xl opacity-10 group-hover:opacity-20 transition duration-500"></div>
+                <img id="cover-image" src="https://via.placeholder.com/300" alt="Album Cover" 
+                     class="relative w-full h-full object-cover rounded-2xl shadow-2xl border border-white/10">
+            </div>
+            
+            <!-- Song Info -->
+            <div class="text-center mb-6 h-16 w-full px-4">
+                <h2 id="song-title" class="text-2xl md:text-3xl font-bold tracking-wide truncate transition-all duration-300 glass-text pb-1">Select a Song</h2>
+                <div class="flex justify-center mt-2">
+                     <span id="artist-name" class="glass-badge px-3 py-1 text-xs text-white/80 font-light tracking-wider uppercase">Music Player</span>
+                </div>
+            </div>
+            
+            <!-- Progress Bar (Orange) -->
+            <div class="w-full max-w-sm mb-6 px-2">
+                <div class="flex items-center justify-between text-xs text-white/50 mb-2 font-mono">
+                    <span id="current-time">0:00</span>
+                    <span id="duration">0:00</span>
+                </div>
+                <div class="relative h-2 flex items-center group">
+                    <input type="range" id="progress" value="0" min="0" max="100" class="w-full h-2 absolute z-20 opacity-0 cursor-pointer">
+                    <div class="w-full h-1 bg-white/10 rounded-full absolute z-10 pointer-events-none overflow-hidden border border-white/5">
+                        <div id="progress-fill" class="h-full bg-orange-500 rounded-full transition-all duration-100 ease-linear shadow-[0_0_10px_#f97316]" style="width: 0%;"></div>
+                    </div>
+                    <!-- Visible thumb tracker -->
+                    <div id="thumb-indicator" class="w-3 h-3 bg-white rounded-full absolute z-10 pointer-events-none shadow-[0_0_10px_rgba(255,255,255,0.8)]" style="left: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Single Row Controls (No Hovers/Scales/Glows on Play) -->
+            <div class="flex items-center justify-between gap-2 md:gap-6 w-full max-w-sm mt-2">
+                
+                <!-- Shuffle -->
+                <button id="shuffle-btn" class="opacity-60 hover:opacity-100 transition p-2">
+                    <img src="assets/ui/shuffle.png" alt="Shuffle" class="w-6 h-6 icon-white">
+                </button>
+                
+                <!-- Prev -->
+                <button id="prev-btn" class="opacity-80 hover:opacity-100 transition p-2">
+                    <img src="assets/ui/prev.png" alt="Prev" class="w-8 h-8 icon-white">
+                </button>
+                
+                <!-- Play (Center) -->
+                <button id="play-btn" class="transition">
+                    <img id="play-icon-img" src="assets/ui/play.png" alt="Play" class="w-16 h-16 md:w-20 md:h-20 icon-white"> 
+                </button>
+                
+                <!-- Next -->
+                <button id="next-btn" class="opacity-80 hover:opacity-100 transition p-2">
+                    <img src="assets/ui/next.png" alt="Next" class="w-8 h-8 icon-white">
+                </button>
+
+                <!-- Repeat -->
+                <button id="repeat-btn" class="opacity-60 hover:opacity-100 transition p-2">
+                    <img src="assets/ui/repeat.png" alt="Repeat" class="w-6 h-6 icon-white">
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Right Side: Playlist (Glass Modal on Mobile) -->
+        <div id="playlist-container" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl border-l border-white/10 flex flex-col transform translate-y-full transition-transform duration-500 md:relative md:transform-none md:bg-transparent md:border-l md:border-white/5 md:w-1/2 md:inset-auto">
+            
+            <!-- Playlist Header -->
+            <div class="p-6 border-b border-white/10 flex items-center justify-between bg-white/5">
+                <h3 class="text-xl font-semibold flex items-center gap-3 tracking-wide">
+                    <img src="assets/ui/playlist.png" class="w-6 h-6 icon-white"> <span class="glass-text">Playlist</span>
+                </h3>
+                <!-- Close Button (Mobile Only) -->
+                <button id="close-playlist-btn" class="md:hidden opacity-70 hover:opacity-100 p-2">
+                    <img src="assets/ui/close.png" alt="Close" class="w-6 h-6 icon-white">
+                </button>
+            </div>
+            
+            <!-- Song List -->
+            <ul id="playlist" class="flex-1 overflow-y-auto scrollbar-hide p-4 space-y-3 pb-24 md:pb-4">
+                <!-- Javascript populates this -->
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA ---
+        let songs = [
+            { name: "I Was Never There", artist: "The Weeknd", file: "I Was Never There.mp3", cover: "I Was Never There.jpg", duration: "4:01" },
+            { name: "Baptized In Fear", artist: "The Weeknd", file: "Baptized In Fear.mp3", cover: "Baptized In Fear.jpg", duration: "3:20" },
+            { name: "The Abyss", artist: "The Weeknd", file: "The Abyss.mp3", cover: "The Abyss.jpg", duration: "3:45" },
+            { name: "Timeless", artist: "The Weeknd", file: "Timeless.mp3", cover: "Timeless.jpg", duration: "2:55" },
+            { name: "Cry For Me", artist: "The Weeknd", file: "Cry For Me.mp3", cover: "Cry For Me.jpg", duration: "3:10" },
+            { name: "São Paulo", artist: "The Weeknd", file: "Sao Paulo.mp3", cover: "Sao Paulo.jpg", duration: "4:12" },
+            { name: "Party Monster", artist: "The Weeknd", file: "Party Monster.mp3", cover: "Party Monster.jpg", duration: "3:30" },
+            { name: "One Of The Girls", artist: "The Weeknd", file: "One Of The Girls.mp3", cover: "One Of The Girls.jpg", duration: "4:05" },
+            { name: "Bargad", artist: "Arpit Bala", file: "bargad.mp3", cover: "bargad.jpg", duration: "2:45" }
+        ];
+
+        songs.sort((a, b) => a.name.localeCompare(b.name));
+
+        const audio = new Audio();
+        const playlistEl = document.getElementById('playlist');
+        const playlistContainer = document.getElementById('playlist-container');
+        const mobilePlaylistBtn = document.getElementById('mobile-playlist-btn');
+        const closePlaylistBtn = document.getElementById('close-playlist-btn');
+        
+        const playBtn = document.getElementById('play-btn');
+        const playIconImg = document.getElementById('play-icon-img');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const shuffleBtn = document.getElementById('shuffle-btn');
+        const repeatBtn = document.getElementById('repeat-btn');
+        
+        const progress = document.getElementById('progress');
+        const progressFill = document.getElementById('progress-fill');
+        const thumbIndicator = document.getElementById('thumb-indicator');
+        
+        const titleEl = document.getElementById('song-title');
+        const artistEl = document.getElementById('artist-name');
+        const coverEl = document.getElementById('cover-image');
+        const currentTimeEl = document.getElementById('current-time');
+        const durationEl = document.getElementById('duration');
+
+        let currentSongIndex = 0;
+        let isPlaying = false;
+        
+        // Repeat Mode: 0 = Off, 1 = All, 2 = One
+        let repeatMode = 0; 
+        let isShuffling = false;
+
+        function init() {
+            renderPlaylist();
+            loadSong(currentSongIndex);
+        }
+
+        // --- MOBILE PLAYLIST TOGGLE ---
+        // Open
+        mobilePlaylistBtn.addEventListener('click', () => {
+            playlistContainer.classList.remove('translate-y-full');
+        });
+        
+        // Close Button
+        closePlaylistBtn.addEventListener('click', () => {
+            playlistContainer.classList.add('translate-y-full');
+        });
+
+        // Close when clicking outside (on the backdrop)
+        playlistContainer.addEventListener('click', (e) => {
+            if (e.target === playlistContainer) {
+                playlistContainer.classList.add('translate-y-full');
+            }
+        });
+
+        // --- PLAYLIST RENDER ---
+        function renderPlaylist() {
+            playlistEl.innerHTML = '';
+            songs.forEach((song, index) => {
+                const isActive = index === currentSongIndex;
+                const li = document.createElement('li');
+                li.className = `p-3 rounded-2xl flex items-center justify-between cursor-pointer transition-all duration-300 group border border-transparent ${isActive ? 'bg-white/10 border-white/20 shadow-lg' : 'hover:bg-white/5 hover:border-white/5'}`;
+                
+                const artistBadge = `<span class="glass-badge px-2 py-0.5 text-[10px] text-white/60 truncate max-w-[80px] block mt-1">${song.artist}</span>`;
+                const durationBadge = `<span class="glass-badge px-2 py-1 text-[11px] font-mono text-white/80 group-hover:text-white transition shadow-sm">${song.duration || '--:--'}</span>`;
+
+                li.innerHTML = `
+                    <div class="flex items-center gap-3 overflow-hidden">
+                        <div class="w-12 h-12 rounded-xl overflow-hidden relative shadow-md flex-shrink-0">
+                            <img src="assets/cover/${song.cover}" class="w-full h-full object-cover" onerror="this.src='assets/ui/record.png'">
+                            <div class="absolute inset-0 bg-orange-500/40 flex items-center justify-center opacity-0 ${isActive ? 'opacity-100' : ''} transition">
+                                <img src="./assets/ui/audio-wave.png" alt="Playing" class="w-6 h-auto animate-pulse brightness-0 invert"/>
+                            </div>
+                        </div>
+                        <div class="min-w-0">
+                            <h4 class="text-sm font-semibold glass-text truncate pr-2">${song.name}</h4>
+                            ${artistBadge}
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0 ml-2">
+                        ${durationBadge}
+                    </div>
+                `;
+                li.addEventListener('click', () => {
+                    currentSongIndex = index;
+                    loadSong(currentSongIndex);
+                    playSong();
+                    // Close modal if mobile
+                    if(window.innerWidth < 768) playlistContainer.classList.add('translate-y-full');
+                });
+                playlistEl.appendChild(li);
+            });
+        }
+
+        function loadSong(index) {
+            const song = songs[index];
+            titleEl.classList.add('opacity-0', 'translate-y-2');
+            
+            setTimeout(() => {
+                titleEl.innerText = song.name;
+                artistEl.innerText = song.artist;
+                titleEl.classList.remove('opacity-0', 'translate-y-2');
+            }, 200);
+
+            coverEl.src = `assets/cover/${song.cover}`;
+            audio.src = `assets/music/${song.file}`;
+            coverEl.onerror = () => { this.src = "https://via.placeholder.com/300?text=No+Cover"; };
+            renderPlaylist();
+            resetProgress();
+        }
+        
+        function resetProgress() {
+            progress.value = 0;
+            progressFill.style.width = '0%';
+            thumbIndicator.style.left = '0%';
+            currentTimeEl.innerText = "0:00";
+        }
+
+        function playSong() {
+            isPlaying = true;
+            audio.play();
+            playIconImg.src = 'assets/ui/pause.png';
+        }
+
+        function pauseSong() {
+            isPlaying = false;
+            audio.pause();
+            playIconImg.src = 'assets/ui/play.png';
+        }
+        
+        function playRandomSong() {
+            let newIndex;
+            do {
+                newIndex = Math.floor(Math.random() * songs.length);
+            } while (newIndex === currentSongIndex && songs.length > 1);
+            currentSongIndex = newIndex;
+            loadSong(currentSongIndex);
+            playSong();
+        }
+
+        function prevSong() {
+            if (isShuffling) { playRandomSong(); return; }
+            currentSongIndex = (currentSongIndex - 1 + songs.length) % songs.length;
+            loadSong(currentSongIndex);
+            playSong();
+        }
+
+        function nextSong() {
+            if (isShuffling) { playRandomSong(); return; }
+            currentSongIndex = (currentSongIndex + 1) % songs.length;
+            loadSong(currentSongIndex);
+            playSong();
+        }
+
+        // --- CONTROLS ---
+
+        playBtn.addEventListener('click', () => isPlaying ? pauseSong() : playSong());
+        prevBtn.addEventListener('click', prevSong);
+        nextBtn.addEventListener('click', nextSong);
+
+        // Spacebar to Play/Pause
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault(); // Stop scrolling
+                isPlaying ? pauseSong() : playSong();
+            }
+        });
+
+        // Shuffle
+        shuffleBtn.addEventListener('click', () => {
+            isShuffling = !isShuffling;
+            const img = shuffleBtn.querySelector('img');
+            
+            if (isShuffling) {
+                img.classList.add('icon-active');
+                shuffleBtn.classList.remove('opacity-60');
+                shuffleBtn.classList.add('opacity-100');
+            } else {
+                img.classList.remove('icon-active');
+                shuffleBtn.classList.add('opacity-60');
+                shuffleBtn.classList.remove('opacity-100');
+            }
+        });
+
+        // Repeat Logic (Off <-> Repeat One)
+        repeatBtn.addEventListener('click', () => {
+            repeatMode = repeatMode === 1 ? 0 : 1; 
+            const img = repeatBtn.querySelector('img');
+            repeatBtn.classList.remove('opacity-60', 'opacity-100');
+            img.classList.remove('icon-active');
+
+            if (repeatMode === 0) {
+                img.src = 'assets/ui/repeat.png';
+                repeatBtn.classList.add('opacity-60');
+            } else {
+                img.src = 'assets/ui/repeat-one.png';
+                repeatBtn.classList.add('opacity-100');
+                img.classList.add('icon-active');
+            }
+        });
+
+        // Time Update
+        audio.addEventListener('timeupdate', (e) => {
+            const { duration, currentTime } = e.srcElement;
+            const progressPercent = (currentTime / duration) * 100;
+            if(!isNaN(progressPercent)) {
+                progress.value = progressPercent;
+                progressFill.style.width = `${progressPercent}%`;
+                thumbIndicator.style.left = `${progressPercent}%`;
+                currentTimeEl.innerText = formatTime(currentTime);
+                durationEl.innerText = formatTime(duration);
+            }
+        });
+
+        progress.addEventListener('input', () => {
+            const val = progress.value;
+            audio.currentTime = (val / 100) * audio.duration;
+            progressFill.style.width = `${val}%`;
+            thumbIndicator.style.left = `${val}%`;
+        });
+        
+        // Audio Ended Logic
+        audio.addEventListener('ended', () => {
+            if (repeatMode === 1) {
+                audio.currentTime = 0;
+                playSong();
+            } else {
+                nextSong();
+            }
+        });
+
+        function formatTime(time) {
+            if (isNaN(time)) return "0:00";
+            const minutes = Math.floor(time / 60);
+            const seconds = Math.floor(time % 60);
+            return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        }
+
+        init();
+    </script>
+</body>
+</html>
